@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026/08/31 07:00",
+  "generatedAt": "2026/08/31 07:18",
   "hotels": [
     {
       "id": "hotel-1",
@@ -25,7 +25,7 @@
           "label": "Trip.com",
           "url": "https://tw.trip.com/hotels/taichung-hotel-detail-25925783/wind-natural-parent-child-inn/",
           "image": "screenshots/hotel-1/trip.png",
-          "updatedAt": "2026/08/31 07:00",
+          "updatedAt": "2026/08/31 07:16",
           "available": true
         }
       }
@@ -45,16 +45,16 @@
         },
         "agoda": {
           "label": "Agoda",
-          "url": "https://www.agoda.com/zh-tw/wind-natural-parent-child-inn_2/hotel/taichung-tw.html",
+          "url": "https://www.agoda.com/zh-tw/ho-li-safety-parent-child-inn/hotel/taichung-tw.html",
           "image": "screenshots/hotel-2/agoda.png",
-          "updatedAt": "2026/08/31 07:00",
+          "updatedAt": "2026/08/31 07:16",
           "available": true
         },
         "trip": {
           "label": "Trip.com",
           "url": "https://www.trip.com/hotels/taichung-hotel-detail-124307430/wind-natural-parent-child-inn-ii/",
           "image": "screenshots/hotel-2/trip.png",
-          "updatedAt": "2026/08/31 07:00",
+          "updatedAt": "2026/08/31 07:16",
           "available": true
         }
       }

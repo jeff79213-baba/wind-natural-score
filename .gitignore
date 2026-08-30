@@ -1,0 +1,16 @@
+# 機密與環境
+.env
+*.local
+service-account.json
+opencode-sk-*.json
+
+# 依賴
+node_modules/
+
+# Firebase 快取
+.firebase/
+
+# 系統
+*.log
+.DS_Store
+Thumbs.db

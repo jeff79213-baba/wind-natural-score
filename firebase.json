@@ -1,0 +1,42 @@
+{
+  "hosting": {
+    "site": "fs-score-sk",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      ".git/**",
+      "**/.*",
+      "**/node_modules/**",
+      "scripts/**",
+      "tests/**",
+      "docs/**",
+      "AGENTS.md",
+      "網?.txt",
+      "config.js",
+      "package.json",
+      "package-lock.json",
+      "vitest.config.js"
+    ],
+    "headers": [
+      {
+        "source": "/index.html",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" }
+        ]
+      },
+      {
+        "source": "/data/metadata.json",
+        "headers": [
+          { "key": "Cache-Control", "value": "public,max-age=120" }
+        ]
+      },
+      {
+        "source": "**/*.@(png|jpg|jpeg|webp)",
+        "headers": [
+          { "key": "Cache-Control", "value": "public,max-age=600" }
+        ]
+      }
+    ]
+  }
+}

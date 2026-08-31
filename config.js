@@ -14,7 +14,7 @@ const HOTELS = [
       },
       agoda: {
         label: 'Agoda',
-        url: 'https://www.agoda.com/zh-tw/wind-natural-parent-child-inn/hotel/taichung-tw.html'
+        url: 'https://www.agoda.com/zh-tw/wind-natural-parent-child-inn_2/hotel/taichung-tw.html'
       },
       trip: {
         label: 'Trip.com',

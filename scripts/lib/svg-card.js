@@ -24,10 +24,9 @@ function descriptor(score) {
   return '偏差';
 }
 
-function buildSvg({ source, score, reviews, updatedAt }) {
+function buildSvg({ source, score, reviews, updatedAt, brand = '#173CD2' }) {
   const W = 420;
   const H = 150;
-  const brand = '#173CD2';
   const desc = descriptor(score);
   const scoreTxt = (score != null && Number.isFinite(score)) ? score.toFixed(1) : '--';
   const reviewTxt = (reviews != null) ? `${reviews} 則評論` : '';

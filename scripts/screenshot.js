@@ -1,8 +1,9 @@
 // 風自然訂房網 - 分數截圖擷取腳本
 // 用法: node scripts/screenshot.js [--all | --hotel hotel-1 | --source booking]
 //
-// - Booking / Agoda: 用 Playwright 無頭瀏覽器開啟頁面，截取分數區塊
-// - Trip: 用純 HTTP 抓 SSR 分數，產生風格化分數卡（因 Trip 對無頭瀏覽器強制登入牆）
+// - Booking: 用 Playwright 無頭瀏覽器開啟頁面，截取分數區塊
+// - Agoda / Trip: 讀取頁面真實分數（DOM/SSR），產生風格化分數卡
+//   （Agoda 的截圖選取器容易抓到錯誤評分區塊，故改讀文字）
 //
 // 產出: screenshots/{hotelId}/{source}.png
 
@@ -10,8 +11,10 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 const { HOTELS } = require('../config');
-const { fetchHtml, parseScore, descriptor } = require('./lib/trip');
+const { fetchHtml, parseScore } = require('./lib/trip');
 const { buildSvg } = require('./lib/svg-card');
+
+const BRAND_COLORS = { booking: '#003580', agoda: '#0c4258', trip: '#173CD2' };
 
 const OUT_DIR = path.join(__dirname, '..', 'screenshots');
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -20,11 +23,6 @@ const SITE_SELECTORS = {
   booking: [
     '[data-testid="review-score-component"]',
     '[data-testid="property-review-score"]'
-  ],
-  agoda: [
-    '[class*="ReviewPlate"]',
-    '[class*="reviewBranding"]',
-    '[class*="ReviewScore"]'
   ]
 };
 
@@ -81,13 +79,51 @@ async function shotTrip(hotel, sourceKey, source) {
       source: source.label,
       score: parsed.score,
       reviews: parsed.reviews,
-      updatedAt: fmtTime()
+      updatedAt: fmtTime(),
+      brand: BRAND_COLORS[sourceKey] || BRAND_COLORS.trip
     });
     const svgFile = path.join(OUT_DIR, hotel.id, `${sourceKey}.svg`);
     fs.mkdirSync(path.dirname(svgFile), { recursive: true });
     fs.writeFileSync(svgFile, svg);
     return { ok: true, score: parsed.score, reviews: parsed.reviews };
   } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+// Agoda: 開啟頁面後從 DOM 讀取真實「評鑑分數」與「篇評鑑」文字，產生分數卡
+// （Agoda 的截圖選取器常抓到錯誤評分區塊，故改讀文字確保正確）
+async function shotAgodaCard(browser, hotel, sourceKey, source) {
+  const ctx = await browser.newContext({
+    userAgent: UA,
+    locale: 'zh-TW',
+    viewport: { width: 1366, height: 900 },
+    extraHTTPHeaders: { 'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8' }
+  });
+  const page = await ctx.newPage();
+  try {
+    await page.goto(source.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForTimeout(7000);
+    const text = await page.evaluate(() => document.body.innerText);
+    const scoreMatch = text.match(/評鑑分數\s*(\d+(?:\.\d+)?)/);
+    const reviewMatch = text.match(/(\d+)\s*篇評鑑/);
+    if (!scoreMatch) { await ctx.close(); return { ok: false, error: 'agoda score not found' }; }
+    const score = parseFloat(scoreMatch[1]);
+    const reviews = reviewMatch ? parseInt(reviewMatch[1], 10) : null;
+    const svg = buildSvg({
+      source: source.label,
+      score,
+      reviews,
+      updatedAt: fmtTime(),
+      brand: BRAND_COLORS[sourceKey] || BRAND_COLORS.agoda
+    });
+    const svgFile = path.join(OUT_DIR, hotel.id, `${sourceKey}.svg`);
+    fs.mkdirSync(path.dirname(svgFile), { recursive: true });
+    fs.writeFileSync(svgFile, svg);
+    await ctx.close();
+    return { ok: true, score, reviews };
+  } catch (e) {
+    await ctx.close();
     return { ok: false, error: e.message };
   }
 }
@@ -133,6 +169,8 @@ async function main() {
       let r;
       if (sourceKey === 'trip') {
         r = await shotTrip(hotel, sourceKey, source);
+      } else if (sourceKey === 'agoda') {
+        r = await shotAgodaCard(browser, hotel, sourceKey, source);
       } else {
         r = await shotWithPlaywright(browser, hotel, sourceKey, source);
       }

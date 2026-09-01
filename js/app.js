@@ -6,7 +6,8 @@
   const BRAND_COLORS = {
     booking: '#003580',
     agoda: '#0c4258',
-    trip: '#173CD2'
+    trip: '#173CD2',
+    maps: '#1a73e8'
   };
 
   const app = document.getElementById('app');
@@ -53,7 +54,7 @@
 
     const body = document.createElement('div');
     body.className = 'card-body';
-    const order = ['booking', 'agoda', 'trip'];
+    const order = ['booking', 'agoda', 'trip', 'maps'];
     order.forEach(key => {
       const src = hotel.sources && hotel.sources[key];
       if (!src) return;

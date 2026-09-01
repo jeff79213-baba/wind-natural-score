@@ -8,9 +8,9 @@ describe('風自然訂房網設定', () => {
     expect(HOTELS[1].id).toBe('hotel-2');
   });
 
-  it('每館包含三家訂房網站', () => {
+  it('每館包含四家訂房/評分來源', () => {
     for (const hotel of HOTELS) {
-      expect(Object.keys(hotel.sources).sort()).toEqual(['agoda', 'booking', 'trip']);
+      expect(Object.keys(hotel.sources).sort()).toEqual(['agoda', 'booking', 'maps', 'trip']);
     }
   });
 
@@ -24,7 +24,7 @@ describe('風自然訂房網設定', () => {
   });
 
   it('一館與二館網址不同', () => {
-    for (const key of ['booking', 'agoda', 'trip']) {
+    for (const key of ['booking', 'agoda', 'trip', 'maps']) {
       expect(HOTELS[0].sources[key].url).not.toBe(HOTELS[1].sources[key].url);
     }
   });

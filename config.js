@@ -19,6 +19,10 @@ const HOTELS = [
       trip: {
         label: 'Trip.com',
         url: 'https://tw.trip.com/hotels/taichung-hotel-detail-25925783/wind-natural-parent-child-inn/'
+      },
+      maps: {
+        label: 'Google 地圖',
+        url: 'https://maps.app.goo.gl/4GK343adN48mHqYP6?g_st=il'
       }
     }
   },
@@ -39,6 +43,10 @@ const HOTELS = [
       trip: {
         label: 'Trip.com',
         url: 'https://www.trip.com/hotels/taichung-hotel-detail-124307430/wind-natural-parent-child-inn-ii/'
+      },
+      maps: {
+        label: 'Google 地圖',
+        url: 'https://maps.app.goo.gl/dBgSX2WaxN9ug2xa6?g_st=il'
       }
     }
   }

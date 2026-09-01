@@ -14,7 +14,7 @@ const { HOTELS } = require('../config');
 const { fetchHtml, parseScore } = require('./lib/trip');
 const { buildSvg } = require('./lib/svg-card');
 
-const BRAND_COLORS = { booking: '#003580', agoda: '#0c4258', trip: '#173CD2' };
+const BRAND_COLORS = { booking: '#003580', agoda: '#0c4258', trip: '#173CD2', maps: '#1a73e8' };
 
 const OUT_DIR = path.join(__dirname, '..', 'screenshots');
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -105,11 +105,20 @@ async function shotAgodaCard(browser, hotel, sourceKey, source) {
     await page.goto(source.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForTimeout(7000);
     const text = await page.evaluate(() => document.body.innerText);
-    const scoreMatch = text.match(/評鑑分數\s*(\d+(?:\.\d+)?)/);
+    // Agoda 主評分格式（版本會變）：可能「評鑑分數8.9（總分10分）很讚 260 篇評鑑」
+    // 或新版的「8.9 \n 很讚 \n 260 篇評鑑」
+    let score = null;
+    let reviews = null;
+    const scorePrefix = text.match(/評鑑分數\s*(\d+(?:\.\d+)?)/);
+    if (scorePrefix) score = parseFloat(scorePrefix[1]);
+    else {
+      // 新版：分數緊鄰描述詞（如「8.9\n很讚」）
+      const near = text.match(/(\d+\.\d+)\s*\n+\s*(?:超棒|很讚|很好|不錯喔|滿意|低於預期)/);
+      if (near) score = parseFloat(near[1]);
+    }
     const reviewMatch = text.match(/(\d+)\s*篇評鑑/);
-    if (!scoreMatch) { await ctx.close(); return { ok: false, error: 'agoda score not found' }; }
-    const score = parseFloat(scoreMatch[1]);
-    const reviews = reviewMatch ? parseInt(reviewMatch[1], 10) : null;
+    if (reviewMatch) reviews = parseInt(reviewMatch[1], 10);
+    if (score == null) { await ctx.close(); return { ok: false, error: 'agoda score not found' }; }
     const svg = buildSvg({
       source: source.label,
       score,
@@ -122,6 +131,40 @@ async function shotAgodaCard(browser, hotel, sourceKey, source) {
     fs.writeFileSync(svgFile, svg);
     await ctx.close();
     return { ok: true, score, reviews };
+  } catch (e) {
+    await ctx.close();
+    return { ok: false, error: e.message };
+  }
+}
+
+// Google 地圖: 開啟短連結後從 DOM 讀取「評分」與描述，產生分數卡
+// （Google Maps 店家資訊卡 DOM 混淆且可滾動，改用讀文字確保正確穩定）
+async function shotMapsCard(browser, hotel, sourceKey, source) {
+  const ctx = await browser.newContext({
+    userAgent: UA,
+    locale: 'zh-TW',
+    viewport: { width: 1366, height: 900 },
+    extraHTTPHeaders: { 'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8' }
+  });
+  const page = await ctx.newPage();
+  try {
+    await page.goto(source.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForTimeout(8000);
+    const text = await page.evaluate(() => document.body.innerText);
+    const scoreMatch = text.match(/^(\d+\.\d)$/m) || text.match(/(?:\n|^)(\d\.\d)(?:\n|$)/);
+    if (!scoreMatch) { await ctx.close(); return { ok: false, error: 'maps score not found' }; }
+    const score = parseFloat(scoreMatch[1]);
+    const svg = buildSvg({
+      source: source.label,
+      score,
+      updatedAt: fmtTime(),
+      brand: BRAND_COLORS[sourceKey] || BRAND_COLORS.maps
+    });
+    const svgFile = path.join(OUT_DIR, hotel.id, `${sourceKey}.svg`);
+    fs.mkdirSync(path.dirname(svgFile), { recursive: true });
+    fs.writeFileSync(svgFile, svg);
+    await ctx.close();
+    return { ok: true, score };
   } catch (e) {
     await ctx.close();
     return { ok: false, error: e.message };
@@ -152,27 +195,41 @@ function walk(dir) {
   );
 }
 
+async function shotOne(browser, hotel, sourceKey, source) {
+  if (sourceKey === 'trip') {
+    return await shotTrip(hotel, sourceKey, source);
+  } else if (sourceKey === 'agoda') {
+    return await shotAgodaCard(browser, hotel, sourceKey, source);
+  } else if (sourceKey === 'maps') {
+    return await shotMapsCard(browser, hotel, sourceKey, source);
+  }
+  return await shotWithPlaywright(browser, hotel, sourceKey, source);
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 async function main() {
   const args = process.argv.slice(2);
   const onlyHotel = args.includes('--all') ? null : (args.find(a => a.startsWith('--hotel=')) || '').split('=')[1] || null;
   const onlySource = (args.find(a => a.startsWith('--source=')) || '').split('=')[1] || null;
+  const maxRetries = (args.includes('--no-retry')) ? 0 : 1;
 
   console.log('開啟無頭瀏覽器 ...');
   const browser = await chromium.launch({ headless: true });
 
   const results = [];
+  let idx = 0;
   for (const hotel of HOTELS) {
     if (onlyHotel && hotel.id !== onlyHotel) continue;
     for (const [sourceKey, source] of Object.entries(hotel.sources)) {
       if (onlySource && sourceKey !== onlySource) continue;
+      idx++;
       process.stdout.write(`  ${hotel.alias} - ${source.label} ... `);
-      let r;
-      if (sourceKey === 'trip') {
-        r = await shotTrip(hotel, sourceKey, source);
-      } else if (sourceKey === 'agoda') {
-        r = await shotAgodaCard(browser, hotel, sourceKey, source);
-      } else {
-        r = await shotWithPlaywright(browser, hotel, sourceKey, source);
+      let r = await shotOne(browser, hotel, sourceKey, source);
+      for (let attempt = 0; attempt < maxRetries && !r.ok; attempt++) {
+        process.stdout.write(`(重試${attempt + 1}) `);
+        await sleep(3000);
+        r = await shotOne(browser, hotel, sourceKey, source);
       }
       if (r.ok) {
         results.push({ hotelId: hotel.id, source: sourceKey, ok: true });
@@ -181,6 +238,8 @@ async function main() {
         results.push({ hotelId: hotel.id, source: sourceKey, ok: false, error: r.error });
         console.log('✘', r.error || 'unknown');
       }
+      // 來源之間稍作停頓，降低被反爬蟲判定的機率
+      await sleep(1500);
     }
   }
 

@@ -13,22 +13,9 @@
   const app = document.getElementById('app');
   const updatedLabel = document.getElementById('updated-label');
 
-  // 建立「重新整理」按鈕（解決瀏覽器/內嵌瀏覽器快取舊資料的問題）
-  const refreshBtn = document.createElement('button');
-  refreshBtn.type = 'button';
-  refreshBtn.id = 'refresh-btn';
-  refreshBtn.className = 'refresh-btn';
-  refreshBtn.textContent = '重新整理';
-  refreshBtn.addEventListener('click', () => {
-    load(true);
-  });
-  document.body.insertBefore(refreshBtn, document.body.firstChild);
-
-  async function load(force) {
+  async function load() {
     try {
-      // force 或使用 no-cache（加入時間戳破壞快取）
-      const url = META_URL + (force ? '?t=' + Date.now() : '');
-      const res = await fetch(url, { cache: 'no-store' });
+      const res = await fetch(META_URL, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       render(data);

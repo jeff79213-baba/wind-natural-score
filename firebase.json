@@ -26,9 +26,21 @@
         ]
       },
       {
+        "source": "/js/{*.js}",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" }
+        ]
+      },
+      {
+        "source": "/css/{*.css}",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" }
+        ]
+      },
+      {
         "source": "/data/metadata.json",
         "headers": [
-          { "key": "Cache-Control", "value": "public,max-age=120" }
+          { "key": "Cache-Control", "value": "no-cache" }
         ]
       },
       {
